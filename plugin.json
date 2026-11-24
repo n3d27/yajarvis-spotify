@@ -1,0 +1,23 @@
+{
+  "id": "spotify",
+  "name": "Spotify",
+  "version": "0.1.0",
+  "description": "Spotify как основной источник музыки через Soloist.",
+  "kind": "rust",
+  "arch": "arm64",
+  "api": 1,
+  "category": "media",
+  "icon": "music",
+  "provides": ["tools", "commands"],
+  "main": "spotify-plugin",
+  "min_core": "0.10.16",
+  "homepage": "https://github.com/n3d27/yajarvis-spotify",
+  "settings": [
+    {"key": "client_id", "label": "Spotify client_id", "type": "text"},
+    {"key": "client_secret", "label": "Spotify client_secret", "type": "password"},
+    {"key": "refresh_token", "label": "Spotify refresh_token", "type": "password"},
+    {"key": "liked_uri", "label": "URI любимых (необязательно)", "type": "text"},
+    {"key": "soloist_dir", "label": "Каталог Soloist", "type": "text", "default": "/data/opt/soloist"},
+    {"key": "pause_on_talk", "label": "Пауза на время разговора", "type": "bool", "default": true}
+  ]
+}

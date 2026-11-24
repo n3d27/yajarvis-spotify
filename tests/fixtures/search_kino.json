@@ -1,0 +1,246 @@
+{
+ "tracks": {
+  "limit": 5,
+  "total": 6,
+  "items": [
+   {
+    "name": "Кинолента",
+    "uri": "spotify:track:1kc3p6wv9FolMakYndum2r",
+    "type": "track",
+    "artists": [
+     {
+      "name": "Basta",
+      "uri": "spotify:artist:7as5DY4Rz9jac9tgoTrj9H",
+      "type": "artist"
+     }
+    ],
+    "album": {
+     "name": "Баста 3",
+     "uri": "spotify:album:2kNlWcK3N37TzO9yPWqP1j",
+     "type": "album"
+    }
+   },
+   {
+    "name": "Кино",
+    "uri": "spotify:track:7q8jzypmJPGTsph168wWjt",
+    "type": "track",
+    "artists": [
+     {
+      "name": "MACAN",
+      "uri": "spotify:artist:5VKufGMVAZ6fs111xYNKnU",
+      "type": "artist"
+     }
+    ],
+    "album": {
+     "name": "Кино",
+     "uri": "spotify:album:1FdQRl30ModtRYqtnEzWvn",
+     "type": "album"
+    }
+   },
+   {
+    "name": "Пачка сигарет",
+    "uri": "spotify:track:7tjVRlo5QYUpPOocaJb387",
+    "type": "track",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ],
+    "album": {
+     "name": "Звезда по имени Солнце",
+     "uri": "spotify:album:0Yu3psNuEMTRM7tzHQgqfJ",
+     "type": "album"
+    }
+   },
+   {
+    "name": "Группа крови",
+    "uri": "spotify:track:4iRg9tHDgmRPvv56IC46Pl",
+    "type": "track",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ],
+    "album": {
+     "name": "Группа крови",
+     "uri": "spotify:album:6qwYHkXhHRgh2EKngXJJOk",
+     "type": "album"
+    }
+   },
+   {
+    "name": "Спокойная ночь",
+    "uri": "spotify:track:0u6SJZRhC1KSguPxLACkt9",
+    "type": "track",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ],
+    "album": {
+     "name": "Последний герой",
+     "uri": "spotify:album:6J5nW8fstQkcN9LwqrUmU9",
+     "type": "album"
+    }
+   }
+  ]
+ },
+ "artists": {
+  "limit": 5,
+  "total": 9,
+  "items": [
+   {
+    "name": "Kino",
+    "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+    "type": "artist"
+   },
+   {
+    "name": "Sektor Gaza",
+    "uri": "spotify:artist:4W4XLF8i9cHVqwASg8Kqv6",
+    "type": "artist"
+   },
+   {
+    "name": "Nautilus Pompilius",
+    "uri": "spotify:artist:3tYzkTZtYt5dGBSrAnWpX0",
+    "type": "artist"
+   },
+   {
+    "name": "King Von",
+    "uri": "spotify:artist:6QtgPSJPSzcnn7dPZ4VINp",
+    "type": "artist"
+   },
+   {
+    "name": "Kings of Leon",
+    "uri": "spotify:artist:2qk9voo8llSGYcZ6xrBzKx",
+    "type": "artist"
+   }
+  ]
+ },
+ "albums": {
+  "limit": 5,
+  "total": 7,
+  "items": [
+   {
+    "name": "Последний герой",
+    "uri": "spotify:album:6J5nW8fstQkcN9LwqrUmU9",
+    "type": "album",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ]
+   },
+   {
+    "name": "Звезда по имени Солнце",
+    "uri": "spotify:album:0Yu3psNuEMTRM7tzHQgqfJ",
+    "type": "album",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ]
+   },
+   {
+    "name": "Чёрный альбом",
+    "uri": "spotify:album:5P5ebmWXB2vIOqPUhFYAuV",
+    "type": "album",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ]
+   },
+   {
+    "name": "Ночь",
+    "uri": "spotify:album:7Mr7AAL9EaIZqbEc9zt1eT",
+    "type": "album",
+    "artists": [
+     {
+      "name": "Kino",
+      "uri": "spotify:artist:2jkl2xJVm71azWAgZKyf42",
+      "type": "artist"
+     }
+    ]
+   },
+   {
+    "name": "Кино",
+    "uri": "spotify:album:1FdQRl30ModtRYqtnEzWvn",
+    "type": "album",
+    "artists": [
+     {
+      "name": "MACAN",
+      "uri": "spotify:artist:5VKufGMVAZ6fs111xYNKnU",
+      "type": "artist"
+     }
+    ]
+   }
+  ]
+ },
+ "playlists": {
+  "limit": 5,
+  "total": 8,
+  "items": [
+   {
+    "name": "Кино - лучшее",
+    "uri": "spotify:playlist:5l37TRiqGM4zBHTd9moGp4",
+    "type": "playlist",
+    "owner": {
+     "display_name": "Test User 1",
+     "uri": "spotify:user:testuser1",
+     "type": "user"
+    }
+   },
+   {
+    "name": "Виктор Цой. Лучшие песни",
+    "uri": "spotify:playlist:3TAuax6u2j79vRjNq6kleq",
+    "type": "playlist",
+    "owner": {
+     "display_name": "Test User 2",
+     "uri": "spotify:user:testuser2",
+     "type": "user"
+    }
+   },
+   {
+    "name": "Русский Рок, 90-е",
+    "uri": "spotify:playlist:3XO5ax9fI4IQALTPQFO17D",
+    "type": "playlist",
+    "owner": {
+     "display_name": "Test User 3",
+     "uri": "spotify:user:testuser3",
+     "type": "user"
+    }
+   },
+   {
+    "name": "Кинолента",
+    "uri": "spotify:playlist:5oZPveCx3d70dpK3lt4JgU",
+    "type": "playlist",
+    "owner": {
+     "display_name": "Test User 4",
+     "uri": "spotify:user:testuser4",
+     "type": "user"
+    }
+   },
+   {
+    "name": "Лучшие советские песни / Best Soviet songs",
+    "uri": "spotify:playlist:6ztBPjXTAXkl4gP5rTN6bL",
+    "type": "playlist",
+    "owner": {
+     "display_name": "Test User 5",
+     "uri": "spotify:user:testuser5",
+     "type": "user"
+    }
+   }
+  ]
+ }
+}

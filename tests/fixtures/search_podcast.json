@@ -1,0 +1,64 @@
+{
+ "shows": {
+  "limit": 5,
+  "total": 137,
+  "items": [
+   {
+    "name": "Lex Fridman Podcast",
+    "uri": "spotify:show:2MAi0BvDc6GTFvKFPXnkCL",
+    "type": "show"
+   },
+   {
+    "name": "LexTalks",
+    "uri": "spotify:show:6cqLgWpABaGIibg4wUeaAr",
+    "type": "show"
+   },
+   {
+    "name": "Lex Fridman Podcast",
+    "uri": "spotify:show:03414dsJTTdTFkOiZQh51J",
+    "type": "show"
+   },
+   {
+    "name": "The Joe Rogan Experience",
+    "uri": "spotify:show:4rOoJ6Egrf8K2IrywzwOMk",
+    "type": "show"
+   },
+   {
+    "name": "Dwarkesh Podcast",
+    "uri": "spotify:show:4JH4tybY1zX6e5hjCwU6gF",
+    "type": "show"
+   }
+  ]
+ },
+ "episodes": {
+  "limit": 5,
+  "total": 1000,
+  "items": [
+   {
+    "name": "#504 – Russia-Ukraine War: Putin, Zelenskyy, Drones and the Future of Warfare",
+    "uri": "spotify:episode:7ywcdUyAXA3dNFKU4xjFeY",
+    "type": "episode"
+   },
+   {
+    "name": "#501 – DHH: Future of Programming, AI, Agentic Engineering, Vibe Coding & Linux",
+    "uri": "spotify:episode:45lhw2Adbrsw0xSCOgIeg3",
+    "type": "episode"
+   },
+   {
+    "name": "#503 – AI Crisis in Math: Navier-Stokes, Riemann Hypothesis & Complexity Theory",
+    "uri": "spotify:episode:0ndqMvnUJkNmQrhK98R09Y",
+    "type": "episode"
+   },
+   {
+    "name": "#494 – Jensen Huang: NVIDIA - The $4 Trillion Company & the AI Revolution",
+    "uri": "spotify:episode:0BGcaYvcDPkvBzFmkRI5uY",
+    "type": "episode"
+   },
+   {
+    "name": "#491 – OpenClaw: The Viral AI Agent that Broke the Internet – Peter Steinberger",
+    "uri": "spotify:episode:0aM69uGff54ewQJzQxZVLf",
+    "type": "episode"
+   }
+  ]
+ }
+}
