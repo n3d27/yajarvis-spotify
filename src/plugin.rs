@@ -2,7 +2,7 @@
 
 use crate::keys::Keys;
 use crate::pick::Kind;
-use crate::soloist::{Op, Probe, Soloist, SpotState};
+use crate::soloist::{Op, Probe, Reach, Soloist, SpotState};
 use crate::talk::{Talk, run_start};
 use crate::web;
 use jarvis_plugin_sdk::{Map, Plugin, Response, Value, json};
@@ -17,10 +17,14 @@ const TOOL_BUDGET: Duration = Duration::from_secs(13);
 const COMMAND_BUDGET: Duration = Duration::from_millis(1500);
 /// Опрос трека для «лайка» внутри `COMMAND_BUDGET`.
 const LIKE_NOW_BUDGET: Duration = Duration::from_millis(1100);
+/// Проверка Soloist перед быстрым запуском внутри `COMMAND_BUDGET`.
+const PLAY_REACH_BUDGET: Duration = Duration::from_millis(1100);
 const DEFERRED: &str = " Включу после ответа.";
 const NO_KEYS: &str = "Spotify не ответил: нет ключей.";
 const NOTHING: &str = "Spotify сейчас ничего не играет.";
 const SOLOIST_DOWN: &str = "Spotify не отвечает: Soloist не запущен или не установлен.";
+const LOGGED_OUT_PREFIX: &str = "Spotify на колонке не в сети: откройте Spotify на телефоне и выберите ";
+const LOGGED_OUT_TAIL: &str = " — один раз, дальше колонка войдёт сама.";
 const STATUS_NO_KEYS: &str = " Ключей Spotify нет — поиск и лайки недоступны.";
 const STATUS_NO_WATCH: &str = " Пауза на время разговора выключена.";
 const TOKEN_FILE: &str = "token.json";
@@ -110,6 +114,23 @@ impl Ctx {
         Ctx { keys: Keys::resolve(settings, Path::new(dir)), soloist: Arc::new(Soloist::new(dir)), store: PathBuf::from(TOKEN_FILE) }
     }
 
+    /// Ответ, если Soloist не может играть: вышел из Spotify или не отвечает.
+    fn unreachable_reply(&self, reach: &Reach) -> Option<String> {
+        match reach {
+            Reach::Up(_) => None,
+            Reach::Down => Some(SOLOIST_DOWN.into()),
+            Reach::LoggedOut => Some(self.logged_out_reply()),
+        }
+    }
+
+    fn logged_out_reply(&self) -> String {
+        let target = match self.soloist.device_name() {
+            Some(n) => format!("устройство «{n}»"),
+            None => "эту колонку в списке устройств".into(),
+        };
+        format!("{LOGGED_OUT_PREFIX}{target}{LOGGED_OUT_TAIL}")
+    }
+
     /// Нужен ли доступ пользователя Web API для этого запроса.
     fn missing_keys(&self, want: Want) -> bool {
         match want {
@@ -152,6 +173,9 @@ impl Shared {
                 Err(e) => return fail(&e),
             },
         };
+        if let Some(r) = c.unreachable_reply(&c.soloist.reach().await) {
+            return r;
+        }
         let mut ops = Vec::new();
         if let Some(on) = pre {
             ops.push(Op::Shuffle(on));
@@ -171,7 +195,11 @@ impl Shared {
         if !c.keys.has_user() {
             return NO_KEYS.into();
         }
-        let Some(SpotState { uri, .. }) = c.soloist.now().await else {
+        let reach = c.soloist.reach().await;
+        if let Some(r) = c.unreachable_reply(&reach) {
+            return r;
+        }
+        let Reach::Up(Some(SpotState { uri, .. })) = reach else {
             return NOTHING.into();
         };
         match web::like(&c.keys, &uri, on, &c.store).await {
@@ -186,6 +214,11 @@ impl Shared {
             Ok(()) => ok.to_string(),
             Err(e) => fail(&e),
         };
+        if matches!(command, "pause" | "resume" | "next" | "prev" | "shuffle_on" | "shuffle_off") {
+            if let Some(r) = c.unreachable_reply(&c.soloist.reach().await) {
+                return r;
+            }
+        }
         match command {
             "pause" => {
                 self.talk.user_paused();
@@ -218,6 +251,7 @@ impl Shared {
             "status" => {
                 let mut text = match c.soloist.probe().await {
                     Probe::Down => SOLOIST_DOWN.to_string(),
+                    Probe::LoggedOut => c.logged_out_reply(),
                     Probe::Idle => NOTHING.to_string(),
                     Probe::Active(s) => {
                         let state = if s.status == "playing" { "Играет" } else { "На паузе" };
@@ -275,9 +309,10 @@ impl Shared {
                 if !self.ctx.keys.has_user() {
                     return None;
                 }
-                let has_track = tokio::time::timeout(LIKE_NOW_BUDGET, self.ctx.soloist.now()).await.ok().flatten().is_some();
-                if !has_track {
-                    return None;
+                match tokio::time::timeout(LIKE_NOW_BUDGET, self.ctx.soloist.reach()).await.ok()? {
+                    Reach::Up(Some(_)) => {}
+                    Reach::Up(None) => return None,
+                    other => return self.ctx.unreachable_reply(&other),
                 }
                 let me = self.clone();
                 tokio::spawn(async move {
@@ -291,6 +326,11 @@ impl Shared {
             Act::Play(want, reply) => {
                 if self.ctx.missing_keys(want) {
                     return None;
+                }
+                // Играть нечем — говорим сразу, не обещая «Включил». Не уложились в бюджет — null.
+                let reach = tokio::time::timeout(PLAY_REACH_BUDGET, self.ctx.soloist.reach()).await.ok()?;
+                if let Some(r) = self.ctx.unreachable_reply(&reach) {
+                    return Some(r);
                 }
                 let me = self.clone();
                 tokio::spawn(async move {

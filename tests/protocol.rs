@@ -50,6 +50,7 @@ mod harness {
         std::fs::create_dir_all(solo.join("scripts")).unwrap();
         std::fs::create_dir_all(solo.join("bin")).unwrap();
         let dir = solo.display();
+        std::fs::write(solo.join("now.json"), "{}").unwrap();
         std::fs::write(solo.join("scripts/control.sh"), format!("echo \"$*\" >> '{dir}/log'\n")).unwrap();
         std::fs::write(solo.join("bin/soloist"), format!("#!/bin/sh\ncat '{dir}/now.json'\n")).unwrap();
         use std::os::unix::fs::PermissionsExt;
@@ -309,6 +310,51 @@ async fn deferred_fast_command_plays_after_route_end() {
     p.core_log("Джарвис: «мое любимое» → плагин (голос)");
     p.core_log("Джарвис: ответ «Включил любимое в Spotify.»");
     assert_eq!(p.wait_log(2).await, ["shuffle off", "play spotify:user:fake:collection"]);
+    p.finish().await;
+}
+
+const LOGGED_OUT: &str = "Spotify на колонке не в сети: откройте Spotify на телефоне и выберите эту колонку в списке устройств — один раз, дальше колонка войдёт сама.";
+
+/// Заглушка вышедшего из Spotify Soloist: `Error: not logged in`, код 3.
+fn logged_out(solo: &std::path::Path) {
+    std::fs::write(solo.join("bin/soloist"), "#!/bin/sh\necho 'Error: not logged in' >&2\nexit 3\n").unwrap();
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn logged_out_soloist_is_reported_not_played() {
+    let mut p = harness::start("loggedout", None).await;
+    logged_out(&p.solo);
+    assert_eq!(p.tool("spotify_play", json!({"kind":"liked"})).await, LOGGED_OUT);
+    assert_eq!(p.tool("spotify_control", json!({"command":"status"})).await, format!("{LOGGED_OUT}{NO_KEYS_TAIL}{NO_WATCH_TAIL}"));
+    assert_eq!(p.tool("spotify_control", json!({"command":"pause"})).await, LOGGED_OUT);
+    assert_eq!(p.call("command", json!("мое любимое")).await, json!(LOGGED_OUT));
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(p.log().is_empty(), "{:?}", p.log());
+    p.finish().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn logged_out_names_the_device_from_settings() {
+    let mut p = harness::start("loggedoutname", None).await;
+    logged_out(&p.solo);
+    std::fs::create_dir_all(p.solo.join("data")).unwrap();
+    std::fs::write(p.solo.join("data/settings"), "{\"device_name\":\"Кухня\"}").unwrap();
+    let r = p.tool("spotify_play", json!({"kind":"liked"})).await;
+    assert!(r.contains("выберите устройство «Кухня» — один раз"), "{r}");
+    p.finish().await;
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn logged_out_midtalk_is_not_deferred() {
+    let mut p = harness::start_with("loggedouttalk", None, json!({"pause_on_talk": true})).await;
+    logged_out(&p.solo);
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    p.core_log("Джарвис: активация (слово, уверенность 1.00)");
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    assert_eq!(p.tool("spotify_play", json!({"kind":"liked"})).await, LOGGED_OUT);
+    p.core_log("Джарвис: ложное срабатывание (никто ничего не сказал) — молчу");
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    assert!(p.log().is_empty(), "{:?}", p.log());
     p.finish().await;
 }
 

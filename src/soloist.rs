@@ -114,9 +114,49 @@ pub enum Op {
 pub enum Probe {
     /// Не запустился, завис или вернул ошибку.
     Down,
+    /// Вышел из Spotify.
+    LoggedOut,
     /// Отвечает, но трека нет.
     Idle,
     Active(SpotState),
+}
+
+/// Достижимость Soloist.
+#[derive(Debug, PartialEq)]
+pub enum Reach {
+    /// Отвечает; состояние, если трек есть.
+    Up(Option<SpotState>),
+    /// Работает, но вышел из Spotify (`not logged in`, код 3).
+    LoggedOut,
+    /// Не запустился, завис или вернул другую ошибку.
+    Down,
+}
+
+const LOGGED_OUT_CODE: i32 = 3;
+
+/// Имя устройства из `<dir>/data/settings` (JSON или строки `ключ: значение` / `ключ=значение`).
+fn device_name_from(text: &str) -> Option<String> {
+    const KEYS: [&str; 4] = ["device_name", "devicename", "device-name", "name"];
+    let clean = |s: &str| {
+        let s = s.trim().trim_matches(|c| c == '"' || c == '\'' || c == ',').trim().to_string();
+        (!s.is_empty()).then_some(s)
+    };
+    if let Ok(v) = serde_json::from_str::<Value>(text) {
+        for k in KEYS {
+            if let Some(s) = v.get(k).and_then(Value::as_str).and_then(clean) {
+                return Some(s);
+            }
+        }
+    }
+    for line in text.lines() {
+        let Some((k, v)) = line.split_once(['=', ':']) else { continue };
+        if KEYS.contains(&k.trim().trim_matches('"').to_lowercase().as_str()) {
+            if let Some(s) = clean(v) {
+                return Some(s);
+            }
+        }
+    }
+    None
 }
 
 pub struct Soloist {
@@ -134,22 +174,35 @@ impl Soloist {
 
     /// Запускает команду в своей группе процессов; по таймауту убивает всю группу
     /// (скрипт и его потомков) и дожидается завершения. `None` — не запустилась или не уложилась.
-    async fn run(&self, mut cmd: tokio::process::Command, timeout: Duration) -> Option<(bool, Vec<u8>)> {
+    async fn run(&self, cmd: tokio::process::Command, timeout: Duration) -> Option<(bool, Vec<u8>)> {
+        let (st, out, _) = self.run_full(cmd, timeout).await?;
+        Some((st.success(), out))
+    }
+
+    /// То же, что `run`, но с кодом выхода и stderr.
+    async fn run_full(
+        &self,
+        mut cmd: tokio::process::Command,
+        timeout: Duration,
+    ) -> Option<(std::process::ExitStatus, Vec<u8>, Vec<u8>)> {
         use tokio::io::AsyncReadExt;
         cmd.current_dir("/")
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .process_group(0)
             .kill_on_drop(true);
         let mut child = cmd.spawn().ok()?;
         let pid = child.id();
         let mut stdout = child.stdout.take()?;
+        let mut stderr = child.stderr.take()?;
         let done = tokio::time::timeout(timeout, async {
-            let mut buf = Vec::new();
-            stdout.read_to_end(&mut buf).await.ok()?;
+            let (mut buf, mut err) = (Vec::new(), Vec::new());
+            let (a, b) = tokio::join!(stdout.read_to_end(&mut buf), stderr.read_to_end(&mut err));
+            a.ok()?;
+            b.ok()?;
             let st = child.wait().await.ok()?;
-            Some((st.success(), buf))
+            Some((st, buf, err))
         })
         .await;
         match done {
@@ -196,6 +249,27 @@ impl Soloist {
         }
     }
 
+    /// Имя этой колонки как устройства Spotify, если его удалось найти в настройках Soloist.
+    pub fn device_name(&self) -> Option<String> {
+        device_name_from(&std::fs::read_to_string(self.dir.join("data/settings")).ok()?)
+    }
+
+    /// Опрос Soloist с различием «вышел из Spotify» и «не отвечает».
+    pub async fn reach(&self) -> Reach {
+        let Some((st, out, err)) = self.run_full(self.ctl_cmd(&["now", "--json"]), NOW_TIMEOUT).await else {
+            return Reach::Down;
+        };
+        if st.success() {
+            return Reach::Up(parse_now(&String::from_utf8_lossy(&out)));
+        }
+        let said = format!("{}{}", String::from_utf8_lossy(&out), String::from_utf8_lossy(&err)).to_lowercase();
+        if said.contains("not logged in") || st.code() == Some(LOGGED_OUT_CODE) {
+            Reach::LoggedOut
+        } else {
+            Reach::Down
+        }
+    }
+
     /// Текущее состояние; Soloist не запущен, завис или вернул мусор — `None`.
     pub async fn now(&self) -> Option<SpotState> {
         parse_now(&self.now_raw().await?)
@@ -203,9 +277,10 @@ impl Soloist {
 
     /// Как `now`, но отличает «Soloist не отвечает» от «ничего не играет».
     pub async fn probe(&self) -> Probe {
-        match self.now_raw().await {
-            None => Probe::Down,
-            Some(raw) => match parse_now(&raw).filter(|s| !s.status.is_empty()) {
+        match self.reach().await {
+            Reach::Down => Probe::Down,
+            Reach::LoggedOut => Probe::LoggedOut,
+            Reach::Up(s) => match s.filter(|s| !s.status.is_empty()) {
                 Some(s) => Probe::Active(s),
                 None => Probe::Idle,
             },
@@ -285,6 +360,12 @@ mod tests {
         assert_eq!(played_ms(&j(1000, 1_700_000_000_000, 1), 1_700_000_010_000), Some(11_000));
         assert_eq!(played_ms(&j(1000, 1_700_000_000_000, 0), 1_700_000_010_000), Some(1000));
         assert_eq!(played_ms("garbage", 0), None);
+    }
+    #[test]
+    fn device_name_formats() {
+        assert_eq!(device_name_from("{\"device_name\":\"Мини 2\"}").as_deref(), Some("Мини 2"));
+        assert_eq!(device_name_from("a: 1\ndevice_name = Кухня\n").as_deref(), Some("Кухня"));
+        assert_eq!(device_name_from("x=1"), None);
     }
     #[test]
     fn parse_now_rejects_garbage() {
