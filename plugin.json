@@ -1,23 +1,58 @@
 {
   "id": "spotify",
   "name": "Spotify",
-  "version": "0.1.0",
-  "description": "Spotify как основной источник музыки через Soloist.",
+  "version": "0.1.1",
+  "description": "Spotify — основной источник музыки для Джарвиса (через Soloist на колонке). Если Soloist уже настроен и в нём есть файл spotify_api.conf с ключами, поля ниже можно не заполнять: плагин возьмёт ключи оттуда.",
   "kind": "rust",
   "arch": "arm64",
   "api": 1,
   "category": "media",
   "icon": "music",
-  "provides": ["tools", "commands"],
+  "provides": [
+    "tools",
+    "commands"
+  ],
   "main": "spotify-plugin",
   "min_core": "0.10.16",
   "homepage": "https://github.com/n3d27/yajarvis-spotify",
   "settings": [
-    {"key": "client_id", "label": "Spotify client_id", "type": "text"},
-    {"key": "client_secret", "label": "Spotify client_secret", "type": "password"},
-    {"key": "refresh_token", "label": "Spotify refresh_token", "type": "password"},
-    {"key": "liked_uri", "label": "URI любимых (необязательно)", "type": "text"},
-    {"key": "soloist_dir", "label": "Каталог Soloist", "type": "text", "default": "/data/opt/soloist"},
-    {"key": "pause_on_talk", "label": "Пауза на время разговора", "type": "bool", "default": true}
+    {
+      "key": "client_id",
+      "label": "Client ID приложения Spotify",
+      "type": "text",
+      "hint": "developer.spotify.com/dashboard → Create app → Settings → Client ID. Пусто — берётся из spotify_api.conf Soloist."
+    },
+    {
+      "key": "client_secret",
+      "label": "Client Secret приложения Spotify",
+      "type": "password",
+      "hint": "Там же, рядом с Client ID: View client secret. Нужен для поиска музыки."
+    },
+    {
+      "key": "refresh_token",
+      "label": "Refresh token (для лайков и «моего любимого»)",
+      "type": "password",
+      "hint": "Необязательно. Без него работает поиск и управление, но не лайки и «любимое». Как получить — в README плагина на GitHub."
+    },
+    {
+      "key": "liked_uri",
+      "label": "Адрес «Любимых треков» (обычно пусто)",
+      "type": "text",
+      "hint": "Оставьте пустым — плагин найдёт сам. Формат: spotify:user:<ваш id>:collection."
+    },
+    {
+      "key": "soloist_dir",
+      "label": "Папка Soloist на колонке",
+      "type": "text",
+      "default": "/data/opt/soloist",
+      "hint": "Менять не нужно, если Soloist ставился пакетом soloist-station-lite."
+    },
+    {
+      "key": "pause_on_talk",
+      "label": "Ставить музыку на паузу, пока Джарвис говорит",
+      "type": "bool",
+      "default": true,
+      "hint": "Без паузы ответ Джарвиса не слышно, пока играет Spotify. Лучше не выключать."
+    }
   ]
 }
