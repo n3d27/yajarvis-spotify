@@ -184,7 +184,7 @@ impl Shared {
         if self.talk.defer_start(ops.clone(), pre) {
             return format!("{ok_text}{DEFERRED}");
         }
-        match run_start(&*c.soloist, ops, pre).await {
+        match run_start(c.soloist.clone(), ops, pre).await {
             Ok(()) => ok_text,
             Err(e) => fail(&e),
         }

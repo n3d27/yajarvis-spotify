@@ -1,5 +1,5 @@
 use spotify_core::soloist::{Op, SpotState};
-use spotify_core::talk::{LogTail, Mark, Player, Talk, classify, is_activity};
+use spotify_core::talk::{LogTail, Mark, Player, Talk, classify, is_activity, run_start_with};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
@@ -445,4 +445,49 @@ async fn hard_cap_ends_talk_despite_activity() {
     assert_eq!(s.ops(), vec![Op::Pause, Op::Resume]);
     assert!(begin.elapsed() < Duration::from_millis(1800));
     let _ = std::fs::remove_file(&log);
+}
+
+/// Заглушка: после Play перемешивание выключено, но перед второй сверкой само возвращается в `true`.
+struct FlipStub {
+    inner: Arc<Stub>,
+    reads: Mutex<u32>,
+}
+impl Player for FlipStub {
+    fn now(&self) -> Pin<Box<dyn Future<Output = Option<SpotState>> + Send + '_>> {
+        let n = {
+            let mut r = self.reads.lock().unwrap();
+            *r += 1;
+            *r
+        };
+        if n == 2 {
+            self.inner.state.lock().unwrap().shuffle = true;
+        }
+        self.inner.now()
+    }
+    fn cmd(&self, op: Op) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + '_>> {
+        match &op {
+            Op::Play(_) => self.inner.state.lock().unwrap().shuffle = false,
+            Op::Shuffle(on) => self.inner.state.lock().unwrap().shuffle = *on,
+            _ => {}
+        }
+        self.inner.cmd(op)
+    }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn liked_shuffle_flip_back_is_corrected_without_next() {
+    let s = Stub::new("playing");
+    let p = Arc::new(FlipStub { inner: s.clone(), reads: Mutex::new(0) });
+    let ms = Duration::from_millis;
+    let ops = vec![Op::Shuffle(false), Op::Play(Some("c".into()))];
+    run_start_with(p, ops, Some(false), &[ms(20), ms(60), ms(100), ms(140)]).await.unwrap();
+    tokio::time::sleep(ms(400)).await;
+    let ops = s.ops();
+    assert_eq!(
+        ops,
+        vec![Op::Shuffle(false), Op::Play(Some("c".into())), Op::Shuffle(false)],
+        "{ops:?}"
+    );
+    assert!(!s.state.lock().unwrap().shuffle);
+    assert!(!ops.contains(&Op::Next));
 }

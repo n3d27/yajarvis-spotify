@@ -12,7 +12,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub const FAILSAFE: Duration = Duration::from_secs(180);
-const RECHECK_PAUSE: Duration = Duration::from_millis(700);
+/// Моменты сверки перемешивания после Play (от Play): Spotify может вернуть прежнее позже.
+/// Потолок сверки от Play.
+pub const MAX_RECHECK: Duration = Duration::from_secs(6);
+pub const RECHECKS: [Duration; 3] = [Duration::from_millis(1000), Duration::from_millis(2500), Duration::from_millis(5000)];
 const POLL_EVERY: Duration = Duration::from_millis(150);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -213,8 +216,18 @@ impl Player for Soloist {
 }
 
 /// Общий запуск для немедленного и отложенного путей: команды по порядку (сбой не-Play
-/// игнорируется, сбой Play — ошибка), затем сверка перемешивания, т.к. Spotify может вернуть прежнее.
-pub async fn run_start(p: &dyn Player, ops: Vec<Op>, want_shuffle: Option<bool>) -> Result<(), String> {
+/// игнорируется, сбой Play — ошибка), затем в фоне сверка перемешивания, т.к. Spotify может вернуть прежнее.
+pub async fn run_start(p: Arc<dyn Player>, ops: Vec<Op>, want_shuffle: Option<bool>) -> Result<(), String> {
+    run_start_with(p, ops, want_shuffle, &RECHECKS).await
+}
+
+/// Как `run_start`, но с заданными моментами сверки (от Play, по возрастанию; не дольше 6 с).
+pub async fn run_start_with(
+    p: Arc<dyn Player>,
+    ops: Vec<Op>,
+    want_shuffle: Option<bool>,
+    checks: &[Duration],
+) -> Result<(), String> {
     for op in ops {
         let is_play = matches!(op, Op::Play(_));
         if let Err(e) = p.cmd(op).await {
@@ -223,16 +236,32 @@ pub async fn run_start(p: &dyn Player, ops: Vec<Op>, want_shuffle: Option<bool>)
             }
         }
     }
-    if let Some(on) = want_shuffle {
-        tokio::time::sleep(RECHECK_PAUSE).await;
-        if let Some(s) = p.now().await {
-            if s.shuffle != on {
-                let _ = p.cmd(Op::Shuffle(on)).await;
-                if on {
-                    let _ = p.cmd(Op::Next).await;
+    if let Some(want) = want_shuffle {
+        let checks: Vec<Duration> = checks.iter().copied().filter(|d| *d <= MAX_RECHECK).collect();
+        tokio::spawn(async move {
+            let began = tokio::time::Instant::now();
+            let (mut first, mut good) = (true, 0);
+            for at in checks {
+                tokio::time::sleep_until(began + at).await;
+                match p.now().await {
+                    Some(s) if !s.status.is_empty() && s.shuffle == want => {
+                        good += 1;
+                        if good >= 2 {
+                            return;
+                        }
+                    }
+                    Some(s) if !s.status.is_empty() => {
+                        good = 0;
+                        let _ = p.cmd(Op::Shuffle(want)).await;
+                        if want && first {
+                            let _ = p.cmd(Op::Next).await;
+                        }
+                        first = false;
+                    }
+                    _ => good = 0,
                 }
             }
-        }
+        });
     }
     Ok(())
 }
@@ -381,7 +410,7 @@ impl Talk {
             if forget {
                 me.pause.lock().unwrap().forget_pause();
             }
-            me.resume_after_talk(&*player).await;
+            me.resume_after_talk(player).await;
         });
     }
 
@@ -404,10 +433,10 @@ impl Talk {
         }
     }
 
-    async fn resume_after_talk(&self, p: &dyn Player) {
+    async fn resume_after_talk(&self, p: Arc<dyn Player>) {
         let deferred = self.pause.lock().unwrap().take_deferred_full();
         if let Some((ops, want)) = deferred {
-            if let Err(e) = run_start(p, ops, want).await {
+            if let Err(e) = run_start(p.clone(), ops, want).await {
                 eprintln!("spotify-плагин: отложенный запуск не удался: {e}");
             }
             return;
